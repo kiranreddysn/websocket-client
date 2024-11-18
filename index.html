@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Client</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+    .container {
+      background: #ffffff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 600px;
+      width: 100%;
+      margin: 20px;
+    }
+    h1 {
+      font-size: 24px;
+      color: #333333;
+      text-align: center;
+    }
+    label {
+      font-weight: bold;
+      color: #555555;
+      margin-top: 10px;
+      display: block;
+    }
+    input, textarea, button {
+      font-size: 16px;
+      width: 100%;
+      margin-top: 5px;
+      padding: 10px;
+      border: 1px solid #cccccc;
+      border-radius: 4px;
+      outline: none;
+    }
+    textarea {
+      resize: none;
+      height: 100px;
+    }
+    input:focus, textarea:focus {
+      border-color: #0078d7;
+      box-shadow: 0 0 5px rgba(0, 120, 215, 0.5);
+    }
+    button {
+      background-color: #0078d7;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background-color: #005bb5;
+    }
+    .log {
+      background: #f9f9f9;
+      border: 1px solid #dddddd;
+      border-radius: 4px;
+      padding: 10px;
+      overflow-y: auto;
+      height: 200px;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #333333;
+    }
+    .log div {
+      margin-bottom: 5px;
+    }
+    .log .info {
+      color: #0078d7;
+    }
+    .log .sent {
+      color: #28a745;
+    }
+    .log .received {
+      color: #17a2b8;
+    }
+    .log .error {
+      color: #dc3545;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>WebSocket Client</h1>
+    <label for="serverUrl">WebSocket Server URL:</label>
+    <input type="text" id="serverUrl" placeholder="ws://example.com:12345">
+    
+    <label for="authToken">Authentication Token (Optional):</label>
+    <input type="text" id="authToken" placeholder="Bearer <your-token>">
+    
+    <button id="connectBtn">Connect</button>
+    <button id="disconnectBtn" disabled>Disconnect</button>
+    
+    <label for="message">Send Message:</label>
+    <textarea id="message" placeholder="Type your message here..."></textarea>
+    <button id="sendBtn" disabled>Send</button>
+
+    <label>Logs:</label>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    let websocket;
+
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const serverUrl = document.getElementById('serverUrl');
+    const authToken = document.getElementById('authToken');
+    const message = document.getElementById('message');
+    const log = document.getElementById('log');
+
+    // Utility to log messages
+    function logMessage(type, msg) {
+      const entry = document.createElement('div');
+      entry.classList.add(type.toLowerCase());
+      entry.textContent = `[${type.toUpperCase()}] ${msg}`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight; // Auto-scroll to the bottom
+    }
+
+    // Connect to WebSocket with authentication
+    connectBtn.addEventListener('click', () => {
+      if (!serverUrl.value) {
+        alert('Please enter a WebSocket server URL.');
+        return;
+      }
+
+      const url = serverUrl.value.trim();
+      const token = authToken.value.trim();
+      
+      try {
+        // Use query parameters for token if needed
+        const finalUrl = token ? `${url}?token=${encodeURIComponent(token)}` : url;
+        websocket = new WebSocket(finalUrl);
+
+        websocket.onopen = () => {
+          logMessage('info', 'Connected to WebSocket server.');
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+          sendBtn.disabled = false;
+        };
+
+        websocket.onmessage = (event) => {
+          logMessage('received', event.data);
+        };
+
+        websocket.onerror = (error) => {
+          logMessage('error', 'An error occurred.');
+          console.error('WebSocket Error:', error);
+        };
+
+        websocket.onclose = () => {
+          logMessage('info', 'Disconnected from WebSocket server.');
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+          sendBtn.disabled = true;
+        };
+      } catch (error) {
+        logMessage('error', `Failed to connect: ${error.message}`);
+      }
+    });
+
+    // Disconnect from WebSocket
+    disconnectBtn.addEventListener('click', () => {
+      if (websocket) {
+        websocket.close();
+      }
+    });
+
+    // Send a message to WebSocket
+    sendBtn.addEventListener('click', () => {
+      if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+        alert('WebSocket is not connected.');
+        return;
+      }
+
+      const msg = message.value;
+      if (msg) {
+        websocket.send(msg);
+        logMessage('sent', msg);
+        message.value = ''; // Clear the message box
+      } else {
+        alert('Please enter a message to send.');
+      }
+    });
+  </script>
+</body>
+</html>
